@@ -81,8 +81,10 @@ void force_handler(mapper_signal msig,
                    int count,
                    mapper_timetag_t *timetag)
 {
-    if (!value)
+    if (!value) {
+        msig_release_instance(msig, instance_id, *timetag);
         return;
+    }
     float *force = (float *)value;
     mapper_signal sig = (mapper_signal)props->user_data;
     float accel, *paccel;

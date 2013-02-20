@@ -11,7 +11,7 @@ struct _agent
 {
     int     active;
     float   obs[4];
-    int     pos[2];
+    float   pos[2];
     float   gain;
     float   spin;
     float   fade;

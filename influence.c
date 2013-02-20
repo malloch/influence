@@ -62,12 +62,15 @@ void on_signal_pos(mapper_signal msig,
             msig_match_instances(msig, sigobs[1], instance_id);
             agents[instance_id].active = 1;
         }
-        int *pos = (int*)value;
+        float *pos = (float*)value;
         agents[instance_id].pos[offset] = *pos;
     }
     else {
         agents[instance_id].active = 0;
-        msig_release_instance(msig, instance_id, MAPPER_NOW);
+        msig_release_instance(sigpos[0], instance_id, MAPPER_NOW);
+        msig_release_instance(sigpos[1], instance_id, MAPPER_NOW);
+        msig_release_instance(sigobs[0], instance_id, MAPPER_NOW);
+        msig_release_instance(sigobs[1], instance_id, MAPPER_NOW);
     }
 }
 
@@ -140,35 +143,38 @@ void on_signal_flow(mapper_signal msig,
 void initMapper()
 {
     printf("initMapper()\n");
-    int mn = 0, mx = field_width;
-    float fmn = 0, fmx = 1.0;
+    float fmn, fmx;
 
     dev = mdev_new("influence", 0, 0);
     mapper_signal input;
 
-    fmn = 0.0, fmx = 1.0;
+    fmn = 0.0;
+    fmx = 1.0;
     mdev_add_input(dev, "/border_gain", 1, 'f', 0, &fmn,
                    &fmx, on_signal_border_gain, 0);
 
-    fmn = -1.0, fmx = 1.0;
+    fmn = -1.0;
+    fmx = 1.0;
     sigobs[0] = mdev_add_output(dev, "/node/observation/x",
                                 1, 'f', 0, &fmn, &fmx);
     msig_reserve_instances(sigobs[0], maxAgents-1);
     sigobs[1] = mdev_add_output(dev, "/node/observation/y",
                                 1, 'f', 0, &fmn, &fmx);
     msig_reserve_instances(sigobs[1], maxAgents-1);
-
-    sigpos[0] = mdev_add_input(dev, "/node/position/x", 1, 'i', 0, &mn,
-                               &mx, on_signal_pos, (void*)(0));
-    msig_reserve_instances(sigpos[0], maxAgents-1);
-    sigpos[1] = mdev_add_input(dev, "/node/position/y", 1, 'i', 0, &mn,
-                               &mx, on_signal_pos, (void*)(1));
-    msig_reserve_instances(sigpos[1], maxAgents-1);
-
     input = mdev_add_input(dev, "/node/gain", 1, 'f', 0, &fmn,
                            &fmx, on_signal_gain, 0);
     msig_reserve_instances(input, maxAgents-1);
 
+    fmn = 0.0;
+    fmx = (float)field_width;
+    sigpos[0] = mdev_add_input(dev, "/node/position/x", 1, 'f', 0, &fmn,
+                               &fmx, on_signal_pos, (void*)(0));
+    msig_reserve_instances(sigpos[0], maxAgents-1);
+    sigpos[1] = mdev_add_input(dev, "/node/position/y", 1, 'f', 0, &fmn,
+                               &fmx, on_signal_pos, (void*)(1));
+    msig_reserve_instances(sigpos[1], maxAgents-1);
+
+    fmn = 0.0;
     fmx = 0.9;
     input = mdev_add_input(dev, "/node/fade", 1, 'f', 0, &fmn,
                            &fmx, on_signal_fade, 0);
