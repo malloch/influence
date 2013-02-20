@@ -95,7 +95,7 @@ void force_handler(mapper_signal msig,
     }
 
     accel = (*paccel) + (*force) / mass * gain;
-    msig_update_instance(sig, instance_id, &accel, 1, MAPPER_TIMETAG_NOW);
+    msig_update_instance(sig, instance_id, &accel, 1, MAPPER_NOW);
 }
 
 void dev_db_callback(mapper_db_device record,

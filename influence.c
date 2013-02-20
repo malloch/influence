@@ -67,6 +67,7 @@ void on_signal_pos(mapper_signal msig,
     }
     else {
         agents[instance_id].active = 0;
+        msig_release_instance(msig, instance_id, MAPPER_NOW);
     }
 }
 
