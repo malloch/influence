@@ -198,7 +198,7 @@ struct _agentInfo *agentInit()
     msig_reserve_instances(sig_accel_in[1], numInstances-1);
     sig_accel_out[0] = mdev_add_output(info->dev, "acceleration/x", 1, 'f', 0, &mn, &mx);
     msig_reserve_instances(sig_accel_out[0], numInstances-1);
-    sig_accel_out[0] = mdev_add_output(info->dev, "acceleration/y", 1, 'f', 0, &mn, &mx);
+    sig_accel_out[1] = mdev_add_output(info->dev, "acceleration/y", 1, 'f', 0, &mn, &mx);
     msig_reserve_instances(sig_accel_out[1], numInstances-1);
 
     // initialize accelerations to zero
