@@ -74,6 +74,39 @@ void make_xagora_connections()
     mapper_monitor_connect(info->mon, signame1, signame2, 0, 0);
 }
 
+void init_instance(int id)
+{
+    float init = 0;
+
+    // initialize accelerations to zero
+    msig_update_instance(sig_accel_in[0], id, &init, 1, MAPPER_NOW);
+    msig_update_instance(sig_accel_in[1], id, &init, 1, MAPPER_NOW);
+
+    // initialize velocities to zero
+    msig_update_instance(sig_vel_in[0], id, &init, 1, MAPPER_NOW);
+    msig_update_instance(sig_vel_in[1], id, &init, 1, MAPPER_NOW);
+
+    // random position
+    init = rand()%1000*0.002-1.0;
+    msig_update_instance(sig_pos_in[0], id, &init, 1, MAPPER_NOW);
+    init = rand()%1000*0.002-1.0;
+    msig_update_instance(sig_pos_in[1], id, &init, 1, MAPPER_NOW);
+}
+
+void release_instance(int instance_id)
+{
+    int i;
+    for (i=0; i<2; i++) {
+        msig_release_instance(sig_pos_in[i], instance_id, MAPPER_NOW);
+        msig_release_instance(sig_pos_out[i], instance_id, MAPPER_NOW);
+        msig_release_instance(sig_vel_in[i], instance_id, MAPPER_NOW);
+        msig_release_instance(sig_vel_out[i], instance_id, MAPPER_NOW);
+        msig_release_instance(sig_accel_in[i], instance_id, MAPPER_NOW);
+        msig_release_instance(sig_accel_out[i], instance_id, MAPPER_NOW);
+        msig_release_instance(sig_force[i], instance_id, MAPPER_NOW);
+    }
+}
+
 void force_handler(mapper_signal msig,
                    mapper_db_signal props,
                    int instance_id,
@@ -82,7 +115,10 @@ void force_handler(mapper_signal msig,
                    mapper_timetag_t *timetag)
 {
     if (!value) {
-        msig_release_instance(msig, instance_id, *timetag);
+        // release all assocaiated signal instances
+        release_instance(instance_id);
+        // reinit with random values
+        init_instance(instance_id);
         return;
     }
     float *force = (float *)value;
@@ -162,7 +198,6 @@ void link_db_callback(mapper_db_link record,
 struct _agentInfo *agentInit()
 {
     int i;
-    float init = 0;
     struct _agentInfo *info = &agentInfo;
     memset(info, 0, sizeof(struct _agentInfo));
 
@@ -179,8 +214,6 @@ struct _agentInfo *agentInit()
     printf("ordinal: %d\n", mdev_ordinal(info->dev));
     fflush(stdout);
 
-    mdev_timetag_now(info->dev, &tt);
-
     // add monitor and monitor callbacks
     info->mon = mapper_monitor_new(info->admin, 0);
     info->db  = mapper_monitor_get_db(info->mon);
@@ -190,6 +223,7 @@ struct _agentInfo *agentInit()
     // add signals
     float mn=-1, mx=1;
 
+    // Add acceleration signals
     sig_accel_in[0] = mdev_add_input(info->dev, "acceleration/x", 1, 'f', 0,
                                      &mn, &mx, 0, 0);
     msig_reserve_instances(sig_accel_in[0], numInstances-1);
@@ -201,12 +235,7 @@ struct _agentInfo *agentInit()
     sig_accel_out[1] = mdev_add_output(info->dev, "acceleration/y", 1, 'f', 0, &mn, &mx);
     msig_reserve_instances(sig_accel_out[1], numInstances-1);
 
-    // initialize accelerations to zero
-    for (i=0; i<numInstances; i++) {
-        msig_update_instance(sig_accel_in[0], i, &init, 1, tt);
-        msig_update_instance(sig_accel_in[1], i, &init, 1, tt);
-    }
-
+    // Add force signals
     sig_force[0] = mdev_add_input(info->dev, "force/x", 1, 'f', "N", &mn, &mx,
                                   force_handler, sig_accel_in[0]);
     msig_reserve_instances(sig_force[0], numInstances-1);
@@ -214,6 +243,7 @@ struct _agentInfo *agentInit()
                                   force_handler, sig_accel_in[1]);
     msig_reserve_instances(sig_force[1], numInstances-1);
 
+    // Add velocity signals
     sig_vel_in[0] = mdev_add_input(info->dev, "velocity/x", 1, 'f', "m/s",
                                    &mn, &mx, 0, 0);
     msig_reserve_instances(sig_vel_in[0], numInstances-1);
@@ -224,13 +254,8 @@ struct _agentInfo *agentInit()
     msig_reserve_instances(sig_vel_out[0], numInstances-1);
     sig_vel_out[1] = mdev_add_output(info->dev, "velocity/y", 1, 'f', "m/s", &mn, &mx);
     msig_reserve_instances(sig_vel_out[1], numInstances-1);
-    
-    // initialize velocities to zero
-    for (i=0; i<numInstances; i++) {
-        msig_update_instance(sig_vel_in[0], i, &init, 1, tt);
-        msig_update_instance(sig_vel_in[1], i, &init, 1, tt);
-    }
 
+    // add position signals
     sig_pos_in[0] = mdev_add_input(info->dev, "position/x", 1, 'f', 0,
                                    &mn, &mx, 0, 0);
     msig_reserve_instances(sig_pos_in[0], numInstances-1);
@@ -244,10 +269,7 @@ struct _agentInfo *agentInit()
 
     // initialize positions to random values
     for (i=0; i<numInstances; i++) {
-        init = rand()%1000*0.002-1.0;
-        msig_update_instance(sig_pos_in[0], i, &init, 1, tt);
-        init = rand()%1000*0.002-1.0;
-        msig_update_instance(sig_pos_in[1], i, &init, 1, tt);
+        init_instance(i);
     }
 
     return info;
@@ -259,7 +281,7 @@ void agentLogout()
     struct _agentInfo *info = &agentInfo;
 
     int i;
-    mdev_timetag_now(info->dev, &tt);
+    mdev_now(info->dev, &tt);
     mdev_start_queue(info->dev, tt);
     for (i=0; i<numInstances; i++) {
         msig_release_instance(sig_pos_out[0], i, tt);
@@ -328,7 +350,7 @@ int main(int argc, char *argv[])
         mapper_monitor_poll(info->mon, 0);
         mdev_poll(info->dev, 20);
 
-        mdev_timetag_now(info->dev, &tt);
+        mdev_now(info->dev, &tt);
         mdev_start_queue(info->dev, tt);
         for (i=0; i<numInstances; i++) {
             for (j=0; j<2; j++) {

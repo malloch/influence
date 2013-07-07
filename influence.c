@@ -20,7 +20,7 @@ void on_draw()
     while (mdev_poll(dev, 0)) {}
 
     int i;
-    mdev_timetag_now(dev, &tt);
+    mdev_now(dev, &tt);
     mdev_start_queue(dev, tt);
     for (i=0; i < maxAgents; i++)
     {
@@ -140,6 +140,22 @@ void on_signal_flow(mapper_signal msig,
     agents[instance_id].flow = *flow;
 }
 
+void on_instance_event(mapper_signal msig,
+                       mapper_db_signal props,
+                       int instance_id,
+                       msig_instance_event_t event,
+                       mapper_timetag_t *timetag)
+{
+    printf("Downstream instance release!\n");
+    if (event == IN_DOWNSTREAM_RELEASE) {
+        agents[instance_id].active = 0;
+        msig_release_instance(sigpos[0], instance_id, MAPPER_NOW);
+        msig_release_instance(sigpos[1], instance_id, MAPPER_NOW);
+        msig_release_instance(sigobs[0], instance_id, MAPPER_NOW);
+        msig_release_instance(sigobs[1], instance_id, MAPPER_NOW);
+    }
+}
+
 void initMapper()
 {
     printf("initMapper()\n");
@@ -158,12 +174,16 @@ void initMapper()
     sigobs[0] = mdev_add_output(dev, "/node/observation/x",
                                 1, 'f', 0, &fmn, &fmx);
     msig_reserve_instances(sigobs[0], maxAgents-1);
+    msig_set_instance_event_callback(sigobs[0], on_instance_event,
+                                     IN_DOWNSTREAM_RELEASE, 0);
     sigobs[1] = mdev_add_output(dev, "/node/observation/y",
                                 1, 'f', 0, &fmn, &fmx);
     msig_reserve_instances(sigobs[1], maxAgents-1);
     input = mdev_add_input(dev, "/node/gain", 1, 'f', 0, &fmn,
                            &fmx, on_signal_gain, 0);
     msig_reserve_instances(input, maxAgents-1);
+    msig_set_instance_event_callback(sigobs[1], on_instance_event,
+                                     IN_DOWNSTREAM_RELEASE, 0);
 
     fmn = 0.0;
     fmx = (float)field_width;
@@ -248,7 +268,7 @@ void mapperLogout()
 {
     int i;
     printf("Cleaning up...\n");
-    mdev_timetag_now(dev, &tt);
+    mdev_now(dev, &tt);
     mdev_start_queue(dev, tt);
     for (i=0; i<maxAgents; i++) {
         msig_release_instance(sigobs[0], i, tt);
