@@ -8,7 +8,6 @@
 struct _agentInfo
 {
     char *influence_device_name;
-    char *xagora_device_name;
 
     int linked_influence;
     int connected;
@@ -53,19 +52,6 @@ void make_influence_connections()
     mapper_monitor_connect(info->mon, signame1, signame2, 0, 0);
 }
 
-void make_xagora_connections()
-{
-    char signame1[1024], signame2[1024];
-    struct _agentInfo *info = &agentInfo;
-
-    sprintf(signame1, "%s/position", mdev_name(info->dev));
-
-    sprintf(signame2, "%s/Butterfly%d",
-            info->xagora_device_name, mdev_ordinal(info->dev));
-
-    mapper_monitor_connect(info->mon, signame1, signame2, 0, 0);
-}
-
 void init_instance(int id)
 {
     float init[] = {0, 0};
@@ -101,7 +87,7 @@ void force_handler(mapper_signal msig,
                    mapper_timetag_t *timetag)
 {
     if (!value) {
-        // release all assocaiated signal instances
+        // release all associated signal instances
         release_instance(instance_id);
         // reinit with random values
         init_instance(instance_id);
@@ -127,7 +113,7 @@ void dev_db_callback(mapper_db_device record,
                      mapper_db_action_t action,
                      void *user)
 {
-    // if we see /influence.1 or /XAgora.1, send /link message
+    // if we see /influence.1, send /link message
     struct _agentInfo *info = (struct _agentInfo*)user;
 
     if (action == MDB_NEW) {
@@ -139,9 +125,6 @@ void dev_db_callback(mapper_db_device record,
             mapper_monitor_link(info->mon, mdev_name(info->dev), record->name, 0, 0);
             mapper_monitor_link(info->mon, record->name, mdev_name(info->dev),
                                 &props, LINK_NUM_SCOPES | LINK_SCOPE_NAMES);
-        }
-        else if (strcmp(record->name, info->xagora_device_name)==0) {
-            // make links to XAgora
         }
     }
     else if (action == MDB_REMOVE) {
@@ -170,10 +153,6 @@ void link_db_callback(mapper_db_link record,
             if (info->linked_influence & 0x03)
                 make_influence_connections();
         }
-        else if ((strcmp(record->src_name, mdev_name(info->dev))==0) &&
-              (strcmp(record->dest_name, info->xagora_device_name)==0)) {
-            make_xagora_connections();
-        }
     }
     else if (action == MDB_REMOVE) {
         if ((strcmp(record->src_name, info->influence_device_name)==0) ||
@@ -189,12 +168,11 @@ struct _agentInfo *agentInit()
     memset(info, 0, sizeof(struct _agentInfo));
 
     info->influence_device_name = strdup("/influence.1");
-    info->xagora_device_name = strdup("/XAgora_receiver.1");
 
     info->admin = mapper_admin_new(0, 0, 0);
 
     // add device
-    info->dev = mdev_new("agent", 0, info->admin);
+    info->dev = mdev_new("passiveAgent", 0, info->admin);
     while (!mdev_ready(info->dev)) {
         mdev_poll(info->dev, 100);
     }
@@ -264,12 +242,6 @@ void agentLogout()
                               info->influence_device_name,
                               mdev_name(info->dev));
         free(info->influence_device_name);
-    }
-    if (info->xagora_device_name) {
-        mapper_monitor_unlink(info->mon,
-                              mdev_name(info->dev),
-                              info->xagora_device_name);
-        free(info->xagora_device_name);
     }
     if (info->dev)
         mdev_free(info->dev);

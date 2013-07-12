@@ -20,7 +20,7 @@ LDLIBS += -lglut -lGLU -lGLEW
 endif
 endif
 
-all: influence agentConnect
+all: influence passiveAgent proxyAgent
 
 influence: influence.o influence_opengl.o influence_opengl.h
 
