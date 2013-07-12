@@ -12,8 +12,8 @@
 
 mapper_device dev = 0;
 mapper_timetag_t tt;
-mapper_signal sigpos[2];
-mapper_signal sigobs[2];
+mapper_signal sigpos;
+mapper_signal sigobs;
 
 void on_draw()
 {
@@ -25,8 +25,7 @@ void on_draw()
     for (i=0; i < maxAgents; i++)
     {
         if (agents[i].active) {
-            msig_update_instance(sigobs[0], i, &agents[i].obs[0], 1, tt);
-            msig_update_instance(sigobs[1], i, &agents[i].obs[1], 1, tt);
+            msig_update_instance(sigobs, i, agents[i].obs, 1, tt);
         }
     }
     mdev_send_queue(dev, tt);
@@ -54,23 +53,19 @@ void on_signal_pos(mapper_signal msig,
                    mapper_timetag_t *timetag)
 {
     if (value) {
-        int offset = (long)props->user_data;
         if (!agents[instance_id].active) {
             // need to init new instance
-            msig_match_instances(msig, sigpos[1-offset], instance_id);
-            msig_match_instances(msig, sigobs[0], instance_id);
-            msig_match_instances(msig, sigobs[1], instance_id);
+            msig_match_instances(msig, sigobs, instance_id);
             agents[instance_id].active = 1;
         }
         float *pos = (float*)value;
-        agents[instance_id].pos[offset] = *pos;
+        agents[instance_id].pos[0] = pos[0];
+        agents[instance_id].pos[1] = pos[1];
     }
     else {
         agents[instance_id].active = 0;
-        msig_release_instance(sigpos[0], instance_id, MAPPER_NOW);
-        msig_release_instance(sigpos[1], instance_id, MAPPER_NOW);
-        msig_release_instance(sigobs[0], instance_id, MAPPER_NOW);
-        msig_release_instance(sigobs[1], instance_id, MAPPER_NOW);
+        msig_release_instance(sigpos, instance_id, MAPPER_NOW);
+        msig_release_instance(sigobs, instance_id, MAPPER_NOW);
     }
 }
 
@@ -149,10 +144,8 @@ void on_instance_event(mapper_signal msig,
     printf("Downstream instance release!\n");
     if (event == IN_DOWNSTREAM_RELEASE) {
         agents[instance_id].active = 0;
-        msig_release_instance(sigpos[0], instance_id, MAPPER_NOW);
-        msig_release_instance(sigpos[1], instance_id, MAPPER_NOW);
-        msig_release_instance(sigobs[0], instance_id, MAPPER_NOW);
-        msig_release_instance(sigobs[1], instance_id, MAPPER_NOW);
+        msig_release_instance(sigpos, instance_id, MAPPER_NOW);
+        msig_release_instance(sigobs, instance_id, MAPPER_NOW);
     }
 }
 
@@ -171,51 +164,46 @@ void initMapper()
 
     fmn = -1.0;
     fmx = 1.0;
-    sigobs[0] = mdev_add_output(dev, "/node/observation/x",
-                                1, 'f', 0, &fmn, &fmx);
-    msig_reserve_instances(sigobs[0], maxAgents-1);
-    msig_set_instance_event_callback(sigobs[0], on_instance_event,
-                                     IN_DOWNSTREAM_RELEASE, 0);
-    sigobs[1] = mdev_add_output(dev, "/node/observation/y",
-                                1, 'f', 0, &fmn, &fmx);
-    msig_reserve_instances(sigobs[1], maxAgents-1);
-    input = mdev_add_input(dev, "/node/gain", 1, 'f', 0, &fmn,
-                           &fmx, on_signal_gain, 0);
-    msig_reserve_instances(input, maxAgents-1);
-    msig_set_instance_event_callback(sigobs[1], on_instance_event,
+    sigobs = mdev_add_output(dev, "/node/observation",
+                             2 , 'f', 0, &fmn, &fmx);
+    msig_release_instance(input, 0, MAPPER_NOW);
+    msig_reserve_instances(sigobs, maxAgents-1);
+    msig_set_instance_event_callback(sigobs, on_instance_event,
                                      IN_DOWNSTREAM_RELEASE, 0);
 
     fmn = 0.0;
     fmx = (float)field_width;
-    sigpos[0] = mdev_add_input(dev, "/node/position/x", 1, 'f', 0, &fmn,
-                               &fmx, on_signal_pos, (void*)(0));
-    msig_reserve_instances(sigpos[0], maxAgents-1);
-    sigpos[1] = mdev_add_input(dev, "/node/position/y", 1, 'f', 0, &fmn,
-                               &fmx, on_signal_pos, (void*)(1));
-    msig_reserve_instances(sigpos[1], maxAgents-1);
+    sigpos = mdev_add_input(dev, "/node/position", 2, 'f', 0, &fmn,
+                            &fmx, on_signal_pos, 0);
+    msig_release_instance(input, 0, MAPPER_NOW);
+    msig_reserve_instances(sigpos, maxAgents-1);
 
     fmn = 0.0;
     fmx = 0.9;
     input = mdev_add_input(dev, "/node/fade", 1, 'f', 0, &fmn,
                            &fmx, on_signal_fade, 0);
+    msig_release_instance(input, 0, MAPPER_NOW);
     msig_reserve_instances(input, maxAgents-1);
 
     fmn = -1.5;
     fmx = 1.5;
     input = mdev_add_input(dev, "/node/spin", 1, 'f', 0, &fmn,
                            &fmx, on_signal_spin, 0);
+    msig_release_instance(input, 0, MAPPER_NOW);
     msig_reserve_instances(input, maxAgents-1);
 
     fmn = -3.1415926;
     fmx = 3.1415926;
     input = mdev_add_input(dev, "/node/direction", 1, 'f', 0, &fmn,
                            &fmx, on_signal_dir, 0);
+    msig_release_instance(input, 0, MAPPER_NOW);
     msig_reserve_instances(input, maxAgents-1);
 
     fmn = -1.0;
     fmx = 1.0;
     input = mdev_add_input(dev, "/node/flow", 1, 'f', 0, &fmn,
                            &fmx, on_signal_flow, 0);
+    msig_release_instance(input, 0, MAPPER_NOW);
     msig_reserve_instances(input, maxAgents-1);
 }
 
@@ -271,8 +259,7 @@ void mapperLogout()
     mdev_now(dev, &tt);
     mdev_start_queue(dev, tt);
     for (i=0; i<maxAgents; i++) {
-        msig_release_instance(sigobs[0], i, tt);
-        msig_release_instance(sigobs[1], i, tt);
+        msig_release_instance(sigobs, i, tt);
     }
     mdev_send_queue(dev, tt);
     mdev_poll(dev, 100);

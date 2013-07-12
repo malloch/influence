@@ -19,13 +19,13 @@ struct _agentInfo
     mapper_db db;
 } agentInfo;
 
-mapper_signal sig_pos_in[2],
-              sig_pos_out[2],
-              sig_vel_in[2],
-              sig_vel_out[2],
-              sig_accel_in[2],
-              sig_accel_out[2],
-              sig_force[2];
+mapper_signal sig_pos_in,
+              sig_pos_out,
+              sig_vel_in,
+              sig_vel_out,
+              sig_accel_in,
+              sig_accel_out,
+              sig_force;
 mapper_timetag_t tt;
 
 float mass = 1.0;
@@ -44,20 +44,12 @@ void make_influence_connections()
     char signame1[1024], signame2[1024];
     struct _agentInfo *info = &agentInfo;
 
-    sprintf(signame1, "%s/node/observation/x", info->influence_device_name);
-    sprintf(signame2, "%s/force/x", mdev_name(info->dev));
+    sprintf(signame1, "%s/node/observation", info->influence_device_name);
+    sprintf(signame2, "%s/force", mdev_name(info->dev));
     mapper_monitor_connect(info->mon, signame1, signame2, 0, 0);
 
-    sprintf(signame1, "%s/node/observation/y", info->influence_device_name);
-    sprintf(signame2, "%s/force/y", mdev_name(info->dev));
-    mapper_monitor_connect(info->mon, signame1, signame2, 0, 0);
-
-    sprintf(signame1, "%s/position/x", mdev_name(info->dev));
-    sprintf(signame2, "%s/node/position/x", info->influence_device_name);
-    mapper_monitor_connect(info->mon, signame1, signame2, 0, 0);
-
-    sprintf(signame1, "%s/position/y", mdev_name(info->dev));
-    sprintf(signame2, "%s/node/position/y", info->influence_device_name);
+    sprintf(signame1, "%s/position", mdev_name(info->dev));
+    sprintf(signame2, "%s/node/position", info->influence_device_name);
     mapper_monitor_connect(info->mon, signame1, signame2, 0, 0);
 }
 
@@ -76,35 +68,29 @@ void make_xagora_connections()
 
 void init_instance(int id)
 {
-    float init = 0;
+    float init[] = {0, 0};
 
     // initialize accelerations to zero
-    msig_update_instance(sig_accel_in[0], id, &init, 1, MAPPER_NOW);
-    msig_update_instance(sig_accel_in[1], id, &init, 1, MAPPER_NOW);
+    msig_update_instance(sig_accel_in, id, &init, 1, MAPPER_NOW);
 
     // initialize velocities to zero
-    msig_update_instance(sig_vel_in[0], id, &init, 1, MAPPER_NOW);
-    msig_update_instance(sig_vel_in[1], id, &init, 1, MAPPER_NOW);
+    msig_update_instance(sig_vel_in, id, &init, 1, MAPPER_NOW);
 
     // random position
-    init = rand()%1000*0.002-1.0;
-    msig_update_instance(sig_pos_in[0], id, &init, 1, MAPPER_NOW);
-    init = rand()%1000*0.002-1.0;
-    msig_update_instance(sig_pos_in[1], id, &init, 1, MAPPER_NOW);
+    init[0] = rand()%1000*0.002-1.0;
+    init[1] = rand()%1000*0.002-1.0;
+    msig_update_instance(sig_pos_in, id, &init, 1, MAPPER_NOW);
 }
 
 void release_instance(int instance_id)
 {
-    int i;
-    for (i=0; i<2; i++) {
-        msig_release_instance(sig_pos_in[i], instance_id, MAPPER_NOW);
-        msig_release_instance(sig_pos_out[i], instance_id, MAPPER_NOW);
-        msig_release_instance(sig_vel_in[i], instance_id, MAPPER_NOW);
-        msig_release_instance(sig_vel_out[i], instance_id, MAPPER_NOW);
-        msig_release_instance(sig_accel_in[i], instance_id, MAPPER_NOW);
-        msig_release_instance(sig_accel_out[i], instance_id, MAPPER_NOW);
-        msig_release_instance(sig_force[i], instance_id, MAPPER_NOW);
-    }
+    msig_release_instance(sig_pos_in, instance_id, MAPPER_NOW);
+    msig_release_instance(sig_pos_out, instance_id, MAPPER_NOW);
+    msig_release_instance(sig_vel_in, instance_id, MAPPER_NOW);
+    msig_release_instance(sig_vel_out, instance_id, MAPPER_NOW);
+    msig_release_instance(sig_accel_in, instance_id, MAPPER_NOW);
+    msig_release_instance(sig_accel_out, instance_id, MAPPER_NOW);
+    msig_release_instance(sig_force, instance_id, MAPPER_NOW);
 }
 
 void force_handler(mapper_signal msig,
@@ -123,7 +109,7 @@ void force_handler(mapper_signal msig,
     }
     float *force = (float *)value;
     mapper_signal sig = (mapper_signal)props->user_data;
-    float accel, *paccel;
+    float accel[2], *paccel;
 
     paccel = (float *)msig_instance_value(sig, instance_id, 0);
     if (!paccel) {
@@ -132,7 +118,8 @@ void force_handler(mapper_signal msig,
         return;
     }
 
-    accel = (*paccel) + (*force) / mass * gain;
+    accel[0] = paccel[0] + force[0] / mass * gain;
+    accel[1] = paccel[1] + force[1] / mass * gain;
     msig_update_instance(sig, instance_id, &accel, 1, MAPPER_NOW);
 }
 
@@ -224,48 +211,30 @@ struct _agentInfo *agentInit()
     float mn=-1, mx=1;
 
     // Add acceleration signals
-    sig_accel_in[0] = mdev_add_input(info->dev, "acceleration/x", 1, 'f', 0,
-                                     &mn, &mx, 0, 0);
-    msig_reserve_instances(sig_accel_in[0], numInstances-1);
-    sig_accel_in[1] = mdev_add_input(info->dev, "acceleration/y", 1, 'f', 0,
-                                     &mn, &mx, 0, 0);
-    msig_reserve_instances(sig_accel_in[1], numInstances-1);
-    sig_accel_out[0] = mdev_add_output(info->dev, "acceleration/x", 1, 'f', 0, &mn, &mx);
-    msig_reserve_instances(sig_accel_out[0], numInstances-1);
-    sig_accel_out[1] = mdev_add_output(info->dev, "acceleration/y", 1, 'f', 0, &mn, &mx);
-    msig_reserve_instances(sig_accel_out[1], numInstances-1);
+    sig_accel_in = mdev_add_input(info->dev, "acceleration", 2, 'f', 0,
+                                  &mn, &mx, 0, 0);
+    msig_reserve_instances(sig_accel_in, numInstances-1);
+    sig_accel_out = mdev_add_output(info->dev, "acceleration", 2, 'f', 0, &mn, &mx);
+    msig_reserve_instances(sig_accel_out, numInstances-1);
 
     // Add force signals
-    sig_force[0] = mdev_add_input(info->dev, "force/x", 1, 'f', "N", &mn, &mx,
-                                  force_handler, sig_accel_in[0]);
-    msig_reserve_instances(sig_force[0], numInstances-1);
-    sig_force[1] = mdev_add_input(info->dev, "force/y", 1, 'f', "N", &mn, &mx,
-                                  force_handler, sig_accel_in[1]);
-    msig_reserve_instances(sig_force[1], numInstances-1);
+    sig_force = mdev_add_input(info->dev, "force", 2, 'f', "N", &mn, &mx,
+                               force_handler, sig_accel_in);
+    msig_reserve_instances(sig_force, numInstances-1);
 
     // Add velocity signals
-    sig_vel_in[0] = mdev_add_input(info->dev, "velocity/x", 1, 'f', "m/s",
-                                   &mn, &mx, 0, 0);
-    msig_reserve_instances(sig_vel_in[0], numInstances-1);
-    sig_vel_in[1] = mdev_add_input(info->dev, "velocity/y", 1, 'f', "m/s",
-                                   &mn, &mx, 0, 0);
-    msig_reserve_instances(sig_vel_in[1], numInstances-1);
-    sig_vel_out[0] = mdev_add_output(info->dev, "velocity/x", 1, 'f', "m/s", &mn, &mx);
-    msig_reserve_instances(sig_vel_out[0], numInstances-1);
-    sig_vel_out[1] = mdev_add_output(info->dev, "velocity/y", 1, 'f', "m/s", &mn, &mx);
-    msig_reserve_instances(sig_vel_out[1], numInstances-1);
+    sig_vel_in = mdev_add_input(info->dev, "velocity", 2, 'f', "m/s",
+                                &mn, &mx, 0, 0);
+    msig_reserve_instances(sig_vel_in, numInstances-1);
+    sig_vel_out = mdev_add_output(info->dev, "velocity", 2, 'f', "m/s", &mn, &mx);
+    msig_reserve_instances(sig_vel_out, numInstances-1);
 
     // add position signals
-    sig_pos_in[0] = mdev_add_input(info->dev, "position/x", 1, 'f', 0,
-                                   &mn, &mx, 0, 0);
-    msig_reserve_instances(sig_pos_in[0], numInstances-1);
-    sig_pos_in[1] = mdev_add_input(info->dev, "position/y", 1, 'f', 0,
-                                   &mn, &mx, 0, 0);
-    msig_reserve_instances(sig_pos_in[1], numInstances-1);
-    sig_pos_out[0] = mdev_add_output(info->dev, "position/x", 1, 'f', 0, &mn, &mx);
-    msig_reserve_instances(sig_pos_out[0], numInstances-1);
-    sig_pos_out[1] = mdev_add_output(info->dev, "position/y", 1, 'f', 0, &mn, &mx);
-    msig_reserve_instances(sig_pos_out[1], numInstances-1);
+    sig_pos_in = mdev_add_input(info->dev, "position", 2, 'f', 0,
+                                &mn, &mx, 0, 0);
+    msig_reserve_instances(sig_pos_in, numInstances-1);
+    sig_pos_out = mdev_add_output(info->dev, "position", 2, 'f', 0, &mn, &mx);
+    msig_reserve_instances(sig_pos_out, numInstances-1);
 
     // initialize positions to random values
     for (i=0; i<numInstances; i++) {
@@ -284,12 +253,9 @@ void agentLogout()
     mdev_now(info->dev, &tt);
     mdev_start_queue(info->dev, tt);
     for (i=0; i<numInstances; i++) {
-        msig_release_instance(sig_pos_out[0], i, tt);
-        msig_release_instance(sig_pos_out[1], i, tt);
-        msig_release_instance(sig_vel_out[0], i, tt);
-        msig_release_instance(sig_vel_out[1], i, tt);
-        msig_release_instance(sig_accel_out[0], i, tt);
-        msig_release_instance(sig_accel_out[1], i, tt);
+        msig_release_instance(sig_pos_out, i, tt);
+        msig_release_instance(sig_vel_out, i, tt);
+        msig_release_instance(sig_accel_out, i, tt);
     }
     mdev_send_queue(info->dev, tt);
 
@@ -339,7 +305,7 @@ int main(int argc, char *argv[])
         goto done;
 
     float *paccel, *pvel, *ppos;
-    float accel, vel, pos;
+    float accel[2], vel[2], pos[2];
 
     while (!mdev_ready(info->dev)) {
         mapper_monitor_poll(info->mon, 0);
@@ -353,46 +319,46 @@ int main(int argc, char *argv[])
         mdev_now(info->dev, &tt);
         mdev_start_queue(info->dev, tt);
         for (i=0; i<numInstances; i++) {
-            for (j=0; j<2; j++) {
-                paccel = (float *)msig_instance_value(sig_accel_in[j], i, 0);
-                pvel = (float *)msig_instance_value(sig_vel_in[j], i, 0);
-                if (!pvel) {
-                    printf("couldn't retrieve vel value for instance %i\n", i);
-                    continue;
-                }
-                if (!paccel) {
-                    printf("couldn't retrieve accel value for instance %i\n", i);
-                    continue;
-                }
-
-                ppos = (float *)msig_instance_value(sig_pos_in[j], i, 0);
-                if (!ppos) {
-                    printf("couldn't retrieve pos value for instance %i\n", i);
-                    continue;
-                }
-
-                accel = *paccel * 0.9;
-                vel = *pvel * 0.9 + accel;
-                pos = *ppos + vel;
-
-                if (pos < -1) {
-                    pos = -1;
-                    vel *= -0.95;
-                }
-                if (pos >= 1) {
-                    pos = 1;
-                    vel *= -0.95;
-                }
-
-                accel = 0;
-
-                msig_update_instance(sig_accel_in[j], i, &accel, 1, tt);
-                msig_update_instance(sig_accel_out[j], i, &accel, 1, tt);
-                msig_update_instance(sig_vel_in[j], i, &vel, 1, tt);
-                msig_update_instance(sig_vel_out[j], i, &vel, 1, tt);
-                msig_update_instance(sig_pos_in[j], i, &pos, 1, tt);
-                msig_update_instance(sig_pos_out[j], i, &pos, 1, tt);
+            paccel = (float *)msig_instance_value(sig_accel_in, i, 0);
+            pvel = (float *)msig_instance_value(sig_vel_in, i, 0);
+            if (!pvel) {
+                printf("couldn't retrieve vel value for instance %i\n", i);
+                continue;
             }
+            if (!paccel) {
+                printf("couldn't retrieve accel value for instance %i\n", i);
+                continue;
+            }
+
+            ppos = (float *)msig_instance_value(sig_pos_in, i, 0);
+            if (!ppos) {
+                printf("couldn't retrieve pos value for instance %i\n", i);
+                continue;
+            }
+
+            for (j = 0; j < 2; j++) {
+                accel[j] = paccel[j] * 0.9;
+                vel[j] = pvel[j] * 0.9 + accel[j];
+                pos[j] = ppos[j] + vel[j];
+
+                if (pos[j] < -1) {
+                    pos[j] = -1;
+                    vel[j] *= -0.95;
+                }
+                if (pos[j] >= 1) {
+                    pos[j] = 1;
+                    vel[j] *= -0.95;
+                }
+
+                accel[j] = 0;
+            }
+
+            msig_update_instance(sig_accel_in, i, &accel, 1, tt);
+            msig_update_instance(sig_accel_out, i, &accel, 1, tt);
+            msig_update_instance(sig_vel_in, i, &vel, 1, tt);
+            msig_update_instance(sig_vel_out, i, &vel, 1, tt);
+            msig_update_instance(sig_pos_in, i, &pos, 1, tt);
+            msig_update_instance(sig_pos_out, i, &pos, 1, tt);
         }
         mdev_send_queue(info->dev, tt);
     }
