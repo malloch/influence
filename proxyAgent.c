@@ -516,13 +516,13 @@ int main(int argc, char *argv[])
                 vel[j] = pvel[j] * 0.9 + accel[j];
                 pos[j] = ppos[j] + vel[j];
 
-                if (pos[j] < -1) {
-                    pos[j] = -1;
-                    vel[j] *= -0.95;
+                if (pos[j] < -0.99) {
+                    pos[j] = -0.99;
+                    //vel[j] *= -0.95;
                 }
-                if (pos[j] >= 1) {
-                    pos[j] = 1;
-                    vel[j] *= -0.95;
+                else if (pos[j] >= 0.99) {
+                    pos[j] = 0.99;
+                    //vel[j] *= -0.95;
                 }
 
                 accel[j] = 0;
