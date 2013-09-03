@@ -54,24 +54,18 @@ int compare_device_class(const char *device_name, const char *class_name)
     return strncmp(device_name, class_name, len);
 }
 
-void provoke_qualia(const char *name)
+void send_message(mapper_db_device dev)
 {
-    printf("PROVOKING QUALIA: %s\n", name);
+    if (!dev)
+        return;
+
+    printf("PROVOKING QUALIA AGENT: %s\n", dev->name);
     /* To allow a multi-instance network with the single-instance Qualia
      * agent programs, we need the Qualia agents to initiate message-passing.
      * However Qualia agents will not generate an "action" (output) until
-     * _after_ they have received an "observation" (intput). This function
-     * cheats and sends an out-of-band message to the observation input of
+     * _after_ they have received an "observation" (input). This function
+     * "cheats" and sends an out-of-band message to the observation input of
      * the Qualia agent to provoke a response and kick things off... */
-
-    struct _agentInfo *info = &agentInfo;
-
-    if (!info->db)
-        return;
-
-    mapper_db_device dev = mapper_db_get_device_by_name(info->db, name);
-    if (!dev)
-        return;
 
     // Retrieve device's IP and port
     lo_type type;
@@ -99,11 +93,34 @@ void provoke_qualia(const char *name)
         return;
     }
 
-    printf("Retrieved IP %s and port %i for device %s\n", host, port, name);
+    printf("Retrieved IP %s and port %i for device %s\n", host, port, dev->name);
     char urlstr[128];
     snprintf(urlstr, 128, "osc.udp://%s:%i", host, port);
     lo_address a = lo_address_new_from_url(urlstr);
     lo_send(a, "/observation", "ff", 0.f, 0.f);
+    lo_address_free(a);
+}
+
+void provoke_qualia_agent(const char *name)
+{
+    /* TODO: we could check update time on local instances and only provoke
+     * connected agents that haven't been in contact recently. */
+    struct _agentInfo *info = &agentInfo;
+
+    if (!info->db)
+        return;
+
+    if (name) {
+        send_message(mapper_db_get_device_by_name(info->db, name));
+    }
+    else {
+        mapper_db_device *pdev = mapper_db_get_all_devices(info->db);
+        while (pdev) {
+            if (compare_device_class((*pdev)->name, "/agent") == 0)
+                send_message(*pdev);
+            pdev = mapper_db_device_next(pdev);
+        }
+    }
 }
 
 void init_instance(int id)
@@ -289,7 +306,7 @@ void link_db_callback(mapper_db_link record,
             mapper_monitor_connect(info->mon, signame1, signame2, &props,
                                    CONNECTION_SEND_AS_INSTANCE);
             info->influence_qualia_linked++;
-            provoke_qualia(record->dest_name);
+            provoke_qualia_agent(record->dest_name);
         }
         else if (action == MDB_REMOVE) {
             info->influence_qualia_linked--;
@@ -309,7 +326,7 @@ void link_db_callback(mapper_db_link record,
             mapper_monitor_connect(info->mon, signame1, signame2, &props,
                                    CONNECTION_SEND_AS_INSTANCE);
             info->qualia_proxy_linked++;
-            provoke_qualia(record->src_name);
+            provoke_qualia_agent(record->src_name);
         }
         else if (action == MDB_REMOVE) {
             info->qualia_proxy_linked--;
@@ -443,7 +460,7 @@ void ctrlc(int sig)
 
 int main(int argc, char *argv[])
 {
-    int i, j, id;
+    int i, j, id, counter=0;
     if (argc > 1)
         numInstances = atoi(argv[1]);
 
@@ -466,6 +483,10 @@ int main(int argc, char *argv[])
     while (!done) {
         mapper_monitor_poll(info->mon, 0);
         mdev_poll(info->dev, 20);
+        if (counter++ > 100) {
+            provoke_qualia_agent(0);
+            counter = 0;
+        }
 
         mdev_now(info->dev, &tt);
         mdev_start_queue(info->dev, tt);
