@@ -356,14 +356,14 @@ struct _agentInfo *agentInit()
     msig_release_instance(sig_accel_out, 0, MAPPER_NOW);
 
     // Reserve more instances
-    msig_reserve_instances(sig_accel_in, numInstances-1);
-    msig_reserve_instances(sig_accel_out, numInstances-1);
+    msig_reserve_instances(sig_accel_in, numInstances-1, 0, 0);
+    msig_reserve_instances(sig_accel_out, numInstances-1, 0, 0);
 
     // Add force signals
     sig_force = mdev_add_input(info->dev, "force", 2, 'f', "N", &mn, &mx,
                                force_handler, sig_accel_in);
     msig_release_instance(sig_force, 0, MAPPER_NOW);
-    msig_reserve_instances(sig_force, numInstances-1);
+    msig_reserve_instances(sig_force, numInstances-1, 0, 0);
 
     // Add velocity signals
     sig_vel_in = mdev_add_input(info->dev, "velocity", 2, 'f', "m/s",
@@ -373,8 +373,8 @@ struct _agentInfo *agentInit()
     msig_release_instance(sig_vel_in, 0, MAPPER_NOW);
     msig_release_instance(sig_vel_out, 0, MAPPER_NOW);
 
-    msig_reserve_instances(sig_vel_in, numInstances-1);
-    msig_reserve_instances(sig_vel_out, numInstances-1);
+    msig_reserve_instances(sig_vel_in, numInstances-1, 0, 0);
+    msig_reserve_instances(sig_vel_out, numInstances-1, 0, 0);
 
     // add position signals
     sig_pos_in = mdev_add_input(info->dev, "position", 2, 'f', 0,
@@ -384,8 +384,8 @@ struct _agentInfo *agentInit()
     msig_release_instance(sig_pos_in, 0, MAPPER_NOW);
     msig_release_instance(sig_pos_out, 0, MAPPER_NOW);
 
-    msig_reserve_instances(sig_pos_in, numInstances-1);
-    msig_reserve_instances(sig_pos_out, numInstances-1);
+    msig_reserve_instances(sig_pos_in, numInstances-1, 0, 0);
+    msig_reserve_instances(sig_pos_out, numInstances-1, 0, 0);
 
     return info;
 }

@@ -167,7 +167,7 @@ void initMapper()
     sigobs = mdev_add_output(dev, "/node/observation",
                              2 , 'f', 0, &fmn, &fmx);
     msig_release_instance(input, 0, MAPPER_NOW);
-    msig_reserve_instances(sigobs, maxAgents-1);
+    msig_reserve_instances(sigobs, maxAgents-1, 0, 0);
     msig_set_instance_event_callback(sigobs, on_instance_event,
                                      IN_DOWNSTREAM_RELEASE, 0);
 
@@ -176,35 +176,35 @@ void initMapper()
     sigpos = mdev_add_input(dev, "/node/position", 2, 'f', 0, &fmn,
                             &fmx, on_signal_pos, 0);
     msig_release_instance(input, 0, MAPPER_NOW);
-    msig_reserve_instances(sigpos, maxAgents-1);
+    msig_reserve_instances(sigpos, maxAgents-1, 0, 0);
 
     fmn = 0.0;
     fmx = 0.9;
     input = mdev_add_input(dev, "/node/fade", 1, 'f', 0, &fmn,
                            &fmx, on_signal_fade, 0);
     msig_release_instance(input, 0, MAPPER_NOW);
-    msig_reserve_instances(input, maxAgents-1);
+    msig_reserve_instances(input, maxAgents-1, 0, 0);
 
     fmn = -1.5;
     fmx = 1.5;
     input = mdev_add_input(dev, "/node/spin", 1, 'f', 0, &fmn,
                            &fmx, on_signal_spin, 0);
     msig_release_instance(input, 0, MAPPER_NOW);
-    msig_reserve_instances(input, maxAgents-1);
+    msig_reserve_instances(input, maxAgents-1, 0, 0);
 
     fmn = -3.1415926;
     fmx = 3.1415926;
     input = mdev_add_input(dev, "/node/direction", 1, 'f', 0, &fmn,
                            &fmx, on_signal_dir, 0);
     msig_release_instance(input, 0, MAPPER_NOW);
-    msig_reserve_instances(input, maxAgents-1);
+    msig_reserve_instances(input, maxAgents-1, 0, 0);
 
     fmn = -1.0;
     fmx = 1.0;
     input = mdev_add_input(dev, "/node/flow", 1, 'f', 0, &fmn,
                            &fmx, on_signal_flow, 0);
     msig_release_instance(input, 0, MAPPER_NOW);
-    msig_reserve_instances(input, maxAgents-1);
+    msig_reserve_instances(input, maxAgents-1, 0, 0);
 }
 
 void CmdLine(int argc, char **argv)
