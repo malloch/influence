@@ -191,28 +191,28 @@ struct _agentInfo *agentInit()
     // Add acceleration signals
     sig_accel_in = mdev_add_input(info->dev, "acceleration", 2, 'f', 0,
                                   &mn, &mx, 0, 0);
-    msig_reserve_instances(sig_accel_in, numInstances-1);
+    msig_reserve_instances(sig_accel_in, numInstances-1, 0, 0);
     sig_accel_out = mdev_add_output(info->dev, "acceleration", 2, 'f', 0, &mn, &mx);
-    msig_reserve_instances(sig_accel_out, numInstances-1);
+    msig_reserve_instances(sig_accel_out, numInstances-1, 0, 0);
 
     // Add force signals
     sig_force = mdev_add_input(info->dev, "force", 2, 'f', "N", &mn, &mx,
                                force_handler, sig_accel_in);
-    msig_reserve_instances(sig_force, numInstances-1);
+    msig_reserve_instances(sig_force, numInstances-1, 0, 0);
 
     // Add velocity signals
     sig_vel_in = mdev_add_input(info->dev, "velocity", 2, 'f', "m/s",
                                 &mn, &mx, 0, 0);
-    msig_reserve_instances(sig_vel_in, numInstances-1);
+    msig_reserve_instances(sig_vel_in, numInstances-1, 0, 0);
     sig_vel_out = mdev_add_output(info->dev, "velocity", 2, 'f', "m/s", &mn, &mx);
-    msig_reserve_instances(sig_vel_out, numInstances-1);
+    msig_reserve_instances(sig_vel_out, numInstances-1, 0, 0);
 
     // add position signals
     sig_pos_in = mdev_add_input(info->dev, "position", 2, 'f', 0,
                                 &mn, &mx, 0, 0);
-    msig_reserve_instances(sig_pos_in, numInstances-1);
+    msig_reserve_instances(sig_pos_in, numInstances-1, 0, 0);
     sig_pos_out = mdev_add_output(info->dev, "position", 2, 'f', 0, &mn, &mx);
-    msig_reserve_instances(sig_pos_out, numInstances-1);
+    msig_reserve_instances(sig_pos_out, numInstances-1, 0, 0);
 
     // initialize positions to random values
     for (i=0; i<numInstances; i++) {
