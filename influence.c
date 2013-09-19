@@ -166,7 +166,7 @@ void initMapper()
     fmx = 1.0;
     sigobs = mdev_add_output(dev, "/node/observation",
                              2 , 'f', 0, &fmn, &fmx);
-    msig_release_instance(input, 0, MAPPER_NOW);
+    msig_release_instance(sigobs, 0, MAPPER_NOW);
     msig_reserve_instances(sigobs, maxAgents-1, 0, 0);
     msig_set_instance_event_callback(sigobs, on_instance_event,
                                      IN_DOWNSTREAM_RELEASE, 0);
@@ -175,7 +175,7 @@ void initMapper()
     fmx = (float)field_width;
     sigpos = mdev_add_input(dev, "/node/position", 2, 'f', 0, &fmn,
                             &fmx, on_signal_pos, 0);
-    msig_release_instance(input, 0, MAPPER_NOW);
+    msig_release_instance(sigpos, 0, MAPPER_NOW);
     msig_reserve_instances(sigpos, maxAgents-1, 0, 0);
 
     fmn = 0.0;
