@@ -305,6 +305,11 @@ void link_db_callback(mapper_db_link record,
             props.send_as_instance = 1;
             mapper_monitor_connect(info->mon, signame1, signame2, &props,
                                    CONNECTION_SEND_AS_INSTANCE);
+            // also try to connect Qualia reward signal if it exists
+            sprintf(signame1, "%s/node/observation/1d", info->influence_device_name);
+            sprintf(signame2, "%s/reward", record->dest_name);
+            mapper_monitor_connect(info->mon, signame1, signame2, &props,
+                                   CONNECTION_SEND_AS_INSTANCE);
             info->influence_qualia_linked++;
             provoke_qualia_agent(record->dest_name);
         }
