@@ -329,6 +329,7 @@ void drawAgents()
             // we will read agent environment here for efficiency
             agents[i].obs[0] = data[0];
             agents[i].obs[1] = data[1];
+            agents[i].obs[2] = sqrt(pow(data[0],2) + pow(data[1], 2));
         }
     }
 }

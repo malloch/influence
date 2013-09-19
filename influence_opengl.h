@@ -10,7 +10,7 @@ void vfgl_Run();
 struct _agent
 {
     int     active;
-    float   obs[4];
+    float   obs[3];
     float   pos[2];
     float   gain;
     float   spin;
