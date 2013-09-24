@@ -98,6 +98,7 @@ void send_message(mapper_db_device dev)
     snprintf(urlstr, 128, "osc.udp://%s:%i", host, port);
     lo_address a = lo_address_new_from_url(urlstr);
     lo_send(a, "/observation", "ff", 0.f, 0.f);
+    lo_send(a, "/reward", "f", 0.f);
     lo_address_free(a);
 }
 
@@ -303,13 +304,18 @@ void link_db_callback(mapper_db_link record,
             sprintf(signame2, "%s/observation", record->dest_name);
             mapper_db_connection_t props;
             props.send_as_instance = 1;
+            props.mode = MO_EXPRESSION;
+            props.expression = "y=x*0.5+0.5";
             mapper_monitor_connect(info->mon, signame1, signame2, &props,
-                                   CONNECTION_SEND_AS_INSTANCE);
+                                   CONNECTION_SEND_AS_INSTANCE |
+                                   CONNECTION_MODE | CONNECTION_EXPRESSION);
             // also try to connect Qualia reward signal if it exists
             sprintf(signame1, "%s/node/observation/1d", info->influence_device_name);
             sprintf(signame2, "%s/reward", record->dest_name);
+            props.expression = "y=3-abs(x)";
             mapper_monitor_connect(info->mon, signame1, signame2, &props,
-                                   CONNECTION_SEND_AS_INSTANCE);
+                                   CONNECTION_SEND_AS_INSTANCE |
+                                   CONNECTION_MODE | CONNECTION_EXPRESSION);
             info->influence_qualia_linked++;
             provoke_qualia_agent(record->dest_name);
         }
